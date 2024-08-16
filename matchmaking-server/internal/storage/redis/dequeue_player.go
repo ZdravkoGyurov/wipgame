@@ -9,13 +9,13 @@ import (
 
 func (c Client) DequeuePlayer(ctx context.Context, playerID string) error {
 	return c.execInTransaction(ctx, func(pipe redis.Pipeliner) error {
-		key := fmt.Sprintf("%s:%s", hashSetName, playerID)
+		key := fmt.Sprintf("%s:%s", c.cfg.HashSetName, playerID)
 		delCmd := pipe.Del(ctx, key)
 		if delCmd.Err() != nil {
 			return fmt.Errorf("failed to remove player with id '%s' from the hash set: %w", playerID, delCmd.Err())
 		}
 
-		zremCmd := pipe.ZRem(ctx, sortedSetName, playerID)
+		zremCmd := pipe.ZRem(ctx, c.cfg.SortedSetName, playerID)
 		if zremCmd.Err() != nil {
 			return fmt.Errorf("failed to remove player with id '%s' from the ordered set: %w", playerID, zremCmd.Err())
 		}

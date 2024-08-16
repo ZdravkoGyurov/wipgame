@@ -11,13 +11,13 @@ import (
 
 func (c Client) EnqueuePlayer(ctx context.Context, player types.Player) error {
 	return c.execInTransaction(ctx, func(pipe redis.Pipeliner) error {
-		key := fmt.Sprintf("%s:%s", hashSetName, player.ID)
+		key := fmt.Sprintf("%s:%s", c.cfg.HashSetName, player.ID)
 		hmsetCmd := pipe.HMSet(ctx, key, player)
 		if hmsetCmd.Err() != nil {
 			return fmt.Errorf("failed to insert player with id '%s' in the hash set: %w", player.ID, hmsetCmd.Err())
 		}
 
-		zaddCmd := pipe.ZAdd(ctx, sortedSetName, redis.Z{
+		zaddCmd := pipe.ZAdd(ctx, c.cfg.SortedSetName, redis.Z{
 			Score:  float64(player.Rating),
 			Member: player.ID,
 		})

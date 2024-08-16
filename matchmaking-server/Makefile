@@ -1,2 +1,2 @@
 run:
-	go run cmd/main.go
+	CONFIG_DIR=config go run cmd/main.go

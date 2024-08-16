@@ -1,6 +1,9 @@
 package redis
 
 import (
+	"fmt"
+	"log/slog"
+
 	"github.com/ZdravkoGyurov/wipgame/matchmaking-server/internal/config"
 
 	"github.com/redis/go-redis/v9"
@@ -8,6 +11,7 @@ import (
 
 type Client struct {
 	client *redis.Client
+	cfg    config.Redis
 }
 
 func NewClient(cfg config.Redis) Client {
@@ -16,5 +20,12 @@ func NewClient(cfg config.Redis) Client {
 			Addr:     cfg.Address,
 			Password: cfg.Password,
 		}),
+		cfg: cfg,
+	}
+}
+
+func (c Client) Close() {
+	if err := c.client.Close(); err != nil {
+		slog.Error(fmt.Sprintf("failed to close redis client: %s", err))
 	}
 }

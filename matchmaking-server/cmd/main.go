@@ -1,68 +1,29 @@
 package main
 
 import (
-	"context"
-	"log"
+	"fmt"
+	"log/slog"
+	"os"
 
+	"github.com/ZdravkoGyurov/wipgame/matchmaking-server/internal/app"
 	"github.com/ZdravkoGyurov/wipgame/matchmaking-server/internal/config"
-	"github.com/ZdravkoGyurov/wipgame/matchmaking-server/internal/storage/redis"
-	"github.com/ZdravkoGyurov/wipgame/matchmaking-server/internal/types"
 )
 
 func main() {
-	ctx := context.Background()
-
-	client := redis.NewClient(config.Redis{
-		Address:  "127.0.0.1:6379",
-		Password: "2xT3f4hNnP",
-	})
-
-	err := client.EnqueuePlayer(ctx, types.Player{
-		ID:            "1",
-		Rating:        1700,
-		RatingRange:   50,
-		OpponentFound: false,
-	})
+	cfg, err := config.Load()
 	if err != nil {
-		log.Panic(err)
+		slog.Error(fmt.Sprintf("failed to load config: %s", err))
+		os.Exit(1)
 	}
 
-	err = client.EnqueuePlayer(ctx, types.Player{
-		ID:            "2",
-		Rating:        1600,
-		RatingRange:   50,
-		OpponentFound: false,
-	})
+	app, err := app.New(cfg)
 	if err != nil {
-		log.Panic(err)
+		slog.Error(fmt.Sprintf("failed to initialize app: %s", err))
+		os.Exit(1)
 	}
 
-	err = client.EnqueuePlayer(ctx, types.Player{
-		ID:            "3",
-		Rating:        1500,
-		RatingRange:   50,
-		OpponentFound: false,
-	})
-	if err != nil {
-		log.Panic(err)
+	if err := app.Start(); err != nil {
+		slog.Error(fmt.Sprintf("failed to start app: %s", err))
+		os.Exit(1)
 	}
-
-	players, err := client.RetrieveQueue(ctx)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	log.Printf("players: %v\n", players)
-
-	err = client.DequeuePlayer(ctx, "1")
-	if err != nil {
-		log.Panic(err)
-	}
-
-	players, err = client.RetrieveQueue(ctx)
-	if err != nil {
-		log.Panic(err)
-	}
-
-	log.Printf("players: %v\n", players)
 }

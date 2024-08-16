@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/ZdravkoGyurov/wipgame/matchmaking-server/internal/types"
 )
@@ -20,8 +21,9 @@ const retrieveQueueLuaScript = `
 	return players
 `
 
-func (c Client) RetrieveQueue(ctx context.Context) ([]types.Player, error) {
-	playersRaw, err := c.client.Eval(ctx, retrieveQueueLuaScript, []string{sortedSetName, hashSetName}).Result()
+func (c Client) RetrieveQueue(ctx context.Context) ([]*types.Player, error) {
+	args := []string{c.cfg.SortedSetName, c.cfg.HashSetName}
+	playersRaw, err := c.client.Eval(ctx, retrieveQueueLuaScript, args).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal players raw: %w", err)
 	}
@@ -39,8 +41,8 @@ func (c Client) RetrieveQueue(ctx context.Context) ([]types.Player, error) {
 	return players, nil
 }
 
-func unmarshalPlayers(playersRawValues []any) ([]types.Player, error) {
-	players := []types.Player{}
+func unmarshalPlayers(playersRawValues []any) ([]*types.Player, error) {
+	players := []*types.Player{}
 
 	for _, playerRaw := range playersRawValues {
 		playerRawValues, ok := playerRaw.([]any)
@@ -60,32 +62,25 @@ func unmarshalPlayers(playersRawValues []any) ([]types.Player, error) {
 }
 
 const (
-	idFieldIdx            = 1
-	ratingFieldIdx        = 3
-	ratingRangeFieldIdx   = 5
-	opponentFoundFieldIdx = 7
+	idFieldIdx       = 1
+	ratingFieldIdx   = 3
+	queuedAtFieldIdx = 5
 )
 
-func unmarshalPlayer(rawValues []any) (types.Player, error) {
+func unmarshalPlayer(rawValues []any) (*types.Player, error) {
 	rating, err := strconv.Atoi(rawValues[ratingFieldIdx].(string))
 	if err != nil {
-		return types.Player{}, fmt.Errorf("failed to convert rating from string to int: %w", err)
+		return nil, fmt.Errorf("failed to convert rating from string to int: %w", err)
 	}
 
-	ratingRange, err := strconv.Atoi(rawValues[ratingRangeFieldIdx].(string))
+	queuedAt, err := time.Parse(time.Layout, rawValues[queuedAtFieldIdx].(string))
 	if err != nil {
-		return types.Player{}, fmt.Errorf("failed to convert ratingRange from string to int: %w", err)
+		return nil, fmt.Errorf("failed to convert queuedAt from string to time.Time: %w", err)
 	}
 
-	opponentFound, err := strconv.ParseBool(rawValues[opponentFoundFieldIdx].(string))
-	if err != nil {
-		return types.Player{}, fmt.Errorf("failed to convert opponentFound from string to bool: %w", err)
-	}
-
-	return types.Player{
-		ID:            rawValues[idFieldIdx].(string),
-		Rating:        rating,
-		RatingRange:   ratingRange,
-		OpponentFound: opponentFound,
+	return &types.Player{
+		ID:       rawValues[idFieldIdx].(string),
+		Rating:   rating,
+		QueuedAt: queuedAt,
 	}, nil
 }
